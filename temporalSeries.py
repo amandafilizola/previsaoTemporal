@@ -1,3 +1,6 @@
+#Residuo = Serie_Original - SVR(Serie_Original)
+#Previsão_Final = SVR(Serie_Original) + AR(Resíduo)
+
 import numpy as np
 import pandas as pd
 from sklearn.svm import SVR
@@ -39,7 +42,7 @@ normalized_dataset = (dataset - minData)/(maxData - minData)
 
 #plotando a correlação
 dataSeries = pd.Series(normalized_dataset)
-corr_factor_plot(dataSeries, 700)
+corr_factor_plot(dataSeries, 10)
 
 
 
