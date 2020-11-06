@@ -1,5 +1,5 @@
 #Residuo = Serie_Original - SVR(Serie_Original)
-#Previsão_Final = SVR(Serie_Original) + AR(Resíduo)
+#Previsão_Final = AR(Serie_Original) + AR(Resíduo)
 
 import numpy as np
 import pandas as pd
@@ -32,7 +32,6 @@ dataset = dataset.iloc[:,1]
 #setar tamanhos
 trainSize = int(np.floor(trainLimit*len(dataset)))
 validateSize = int(np.floor(validateLimit*len(dataset)))
-validateSize = int(np.floor(testLimit*len(dataset)))
 
 
 #normalizar a base
@@ -80,7 +79,7 @@ for d in range(1, dimension+stepAhead, 1):
 
 #validação por dimensão, menor mean squared error
 plt.bar(range(1, dimension+stepAhead, 1), erroBar)
-plt.xlabel('Dimensão')
+plt.xlabel('Dimensão da série temporal')
 plt.ylabel('MSE Validation')
 plt.show()
 
@@ -91,5 +90,90 @@ print('o erro deste modelo é ',mse_test)
 
 plt.plot(predTest)
 plt.plot(testTarget.values)
-plt.legend(['Previsões', 'Valor Real'])
+plt.legend(['Previsões da série temporal', 'Valor Real'])
 plt.show()
+
+
+###########################################################
+#Residuo = Serie_Original - SVR(Serie_Original)
+
+length = [i for i in range(len(predTest))]
+predTest = pd.Series(predTest, index=length)
+
+testTarget.reset_index(drop=True)
+residuo = []
+length = len(testTarget)
+
+for (index, value) in enumerate(testTarget):
+  residuo.append(value - predTest[index])
+residuo = pd.Series(residuo)
+
+trainLimit = 0.7
+validateLimit = 0.15
+testLimit = 0.15
+
+#setar tamanhos
+residueTrainSize = int(np.floor(trainLimit*len(residuo)))
+residueValidateSize = int(np.floor(validateLimit*len(residuo)))
+
+
+#normalizar a base
+residueMaxData = np.max(residuo[0:trainSize])
+residueMinData = np.min(residuo[0:trainSize])
+normalizedResidueDataset = (residuo - minData)/(maxData - minData)
+
+#plotando a correlação
+residueDataSeries = pd.Series(normalizedResidueDataset)
+corr_factor_plot(residueDataSeries, 10)
+
+
+residueDimension = 10
+bestResidueValue = 100**10;
+erroResidueBar = []
+
+for d in range(1, residueDimension+stepAhead, 1):
+  shiftedResidueData = pd.concat([residueDataSeries.shift(i) for i in range(d+stepAhead)], axis=1)
+  residueTrain = shiftedResidueData.iloc[d:residueTrainSize, 1:]
+  residueTrain = np.hstack((residueTrain, np.ones_like(residueTrain.iloc[:,0].values.reshape(len(residueTrain),1))))
+  residueTrainTarget = shiftedResidueData.iloc[d:residueTrainSize, 0]
+
+  residueValid = shiftedResidueData.iloc[residueTrainSize:(residueValidateSize+residueTrainSize), 1:]
+  residueValid = np.hstack((residueValid, np.zeros_like(residueValid.iloc[:,0].values.reshape(len(residueValid),1))))
+  residueValidTarget = shiftedResidueData.iloc[residueTrainSize:(residueValidateSize+residueTrainSize), 0]
+
+  residueTest = shiftedResidueData.iloc[(residueValidateSize+residueTrainSize):, 1:]
+  residueTest = np.hstack((residueTest, np.ones_like(residueTest.iloc[:,0].values.reshape(len(residueTest),1))))
+  residueTestTarget = shiftedResidueData.iloc[(residueValidateSize+residueTrainSize):, 0]
+
+  X_inv = np.linalg.pinv(residueTrain)
+  residueCoefficients = X_inv.dot(residueTrainTarget)
+
+  #validando o modelo
+  residuePredictedValues = residueCoefficients.dot(residueValid.T)
+  residueError = mse(residuePredictedValues, residueValidTarget)
+
+  erroResidueBar.append(residueError)
+  if(residueError < bestResidueValue):
+    bestResidueValue = residueError
+
+
+#validação por dimensão, menor mean squared error
+plt.bar(range(1, residueDimension+stepAhead, 1), erroResidueBar)
+plt.xlabel('Dimensão')
+plt.ylabel('MSE Validation')
+plt.show()
+
+#aplicando a previsão ao teste
+residuePredTest = residueCoefficients.dot(residueTest.T)
+mse_test = mse(residuePredTest, residueTestTarget)
+print('o erro deste modelo é ',mse_test)
+
+plt.plot(residuePredTest)
+plt.plot(residueTestTarget.values)
+plt.legend(['Previsões do resíduo', 'Valor Real'])
+plt.show()
+
+
+
+##############################################################################
+#Previsão_Final = AR(Serie_Original) + AR(Resíduo)
