@@ -13,6 +13,7 @@ def corr_factor_plot(data, lags):
   values = []
   for i in range((lags)):
     values.append(data.autocorr(i))
+  plt.clf()
   plt.plot(np.zeros_like(values))
   plt.plot(np.ones_like(values)*2*(1/np.sqrt(len(data))))
   plt.plot(np.ones_like(values)*(-2)*(1/np.sqrt(len(data))))
@@ -78,6 +79,7 @@ for d in range(1, dimension+stepAhead, 1):
     bestValue = erro
 
 #validação por dimensão, menor mean squared error
+plt.clf()
 plt.bar(range(1, dimension+stepAhead, 1), erroBar)
 plt.xlabel('Dimensão da série temporal')
 plt.ylabel('MSE Validation')
@@ -85,9 +87,10 @@ plt.show()
 
 #aplicando a previsão ao teste
 predTest = coefficients.dot(test.T)
-mse_test = mse(predTest, testTarget)
-print('o erro deste modelo é ',mse_test)
+mse_test_series = mse(predTest, testTarget)
+print('o erro da previsão da série original é ',mse_test_series)
 
+plt.clf()
 plt.plot(predTest)
 plt.plot(testTarget.values)
 plt.legend(['Previsões da série temporal', 'Valor Real'])
@@ -95,7 +98,7 @@ plt.show()
 
 
 ###########################################################
-#Residuo = Serie_Original - SVR(Serie_Original)
+#Residuo = Serie_Original - LIN(Serie_Original)
 
 length = [i for i in range(len(predTest))]
 predTest = pd.Series(predTest, index=length)
@@ -108,9 +111,9 @@ for (index, value) in enumerate(testTarget):
   residuo.append(value - predTest[index])
 residuo = pd.Series(residuo)
 
-trainLimit = 0.7
-validateLimit = 0.15
-testLimit = 0.15
+trainLimit = 0.6
+validateLimit = 0.2
+testLimit = 0.2
 
 #setar tamanhos
 residueTrainSize = int(np.floor(trainLimit*len(residuo)))
@@ -128,7 +131,7 @@ corr_factor_plot(residueDataSeries, 10)
 
 
 residueDimension = 10
-bestResidueValue = 100**10;
+bestResidueValue = 100**10
 erroResidueBar = []
 
 for d in range(1, residueDimension+stepAhead, 1):
@@ -158,6 +161,7 @@ for d in range(1, residueDimension+stepAhead, 1):
 
 
 #validação por dimensão, menor mean squared error
+plt.clf()
 plt.bar(range(1, residueDimension+stepAhead, 1), erroResidueBar)
 plt.xlabel('Dimensão')
 plt.ylabel('MSE Validation')
@@ -165,9 +169,10 @@ plt.show()
 
 #aplicando a previsão ao teste
 residuePredTest = residueCoefficients.dot(residueTest.T)
-mse_test = mse(residuePredTest, residueTestTarget)
-print('o erro deste modelo é ',mse_test)
+mse_test_residuo = mse(residuePredTest, residueTestTarget)
+print('o erro do resíduo é ',mse_test_residuo)
 
+plt.clf()
 plt.plot(residuePredTest)
 plt.plot(residueTestTarget.values)
 plt.legend(['Previsões do resíduo', 'Valor Real'])
@@ -177,3 +182,22 @@ plt.show()
 
 ##############################################################################
 #Previsão_Final = AR(Serie_Original) + AR(Resíduo)
+
+predTest = predTest.iloc[(len(predTest)-len(residuePredTest)):]
+
+previsaoFinal = []
+
+for (index, value) in enumerate(predTest):
+  previsaoFinal.append((value + residuePredTest[index]))
+previsaoFinal = pd.Series(previsaoFinal)
+
+finalTarget = testTarget.iloc[(len(testTarget)-len(residuePredTest)):]
+
+plt.clf()
+plt.plot(previsaoFinal)
+plt.plot(finalTarget.values)
+plt.legend(['Previsão Final', 'Valor Real'])
+plt.show()
+
+mse_test_final = mse(previsaoFinal, finalTarget.values)
+print('o erro da previsão final é ', mse_test_final)
