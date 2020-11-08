@@ -127,7 +127,7 @@ normalizedResidueDataset = (residuo - minData)/(maxData - minData)
 
 #plotando a correlação
 residueDataSeries = pd.Series(normalizedResidueDataset)
-corr_factor_plot(residueDataSeries, 10)
+corr_factor_plot(residueDataSeries, 20)
 
 
 residueDimension = 10
@@ -187,8 +187,9 @@ predTest = predTest.iloc[(len(predTest)-len(residuePredTest)):]
 
 previsaoFinal = []
 
+
 for (index, value) in enumerate(predTest):
-  previsaoFinal.append((value + residuePredTest[index]))
+  previsaoFinal.append((value + residuePredTest[index]**2))
 previsaoFinal = pd.Series(previsaoFinal)
 
 finalTarget = testTarget.iloc[(len(testTarget)-len(residuePredTest)):]
@@ -196,6 +197,7 @@ finalTarget = testTarget.iloc[(len(testTarget)-len(residuePredTest)):]
 plt.clf()
 plt.plot(previsaoFinal)
 plt.plot(finalTarget.values)
+plt.ylim(0,1.5)
 plt.legend(['Previsão Final', 'Valor Real'])
 plt.show()
 
